@@ -7,13 +7,13 @@ Since Unix file system doesn't have a recycle bin, whenever a file or directory 
 bash recycle [OPTION]... [FILE]...
 ```
 ### Description
-bash recycle command recycles the specified file or folder (file inclusive) to $HOME/recyclebin
+This command recycles the specified file or folder (file inclusive) to $HOME/recyclebin
 
 ### Options
 ```
--i		Ask for confirmation before recycling any files. A response beginning with y or Y means yes. All other responses mean no.
+-i	Ask for confirmation before recycling any files. A response beginning with y or Y means yes. All other responses mean no.
 
--v		Display a message confirming recycle
+-v	Display a message confirming recycle
 
--r		Remove a directory and recycle its contents
+-r	Remove a directory and recycle its contents
 ```
