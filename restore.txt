@@ -1,0 +1,80 @@
+#!/bin/bash
+
+restorefile=$(basename $0)
+recursive=false
+
+function restore(){
+	
+	#restore folder if it doesn't exit
+	restore_folder $restorepath
+	
+	#restoring the file
+	mv $restorefile_path $restorepath 2> /dev/null
+	#remove record in .restore.info
+	grep -v "$restore_info" $HOME/.restore.info > $HOME/.temp.restore.info
+	mv $HOME/.temp.restore.info $HOME/.restore.info
+}
+
+function restore_folder(){
+	local dir=$(dirname $1 2> /dev/null)
+	
+	#check if the restore dir exist
+	if [[ ! -d $dir && $recursive == true ]]; then
+		restore_folder $dir
+		mkdir $dir
+	elif [[ $recursive == false ]]; then
+		echo "restore: $i is inside directory which need '-r' option to restore"
+	fi
+
+}
+
+#restore file that passed in as arg
+if [ $# -gt 0 ] ; then
+	while getopts r opt; do
+		case $opt in
+			r) recursive=true ;;
+			*) echo "recycle: invalid option -- '$opt'"
+			exit 1;;
+		esac
+	done
+	shift $(($OPTIND - 1))
+
+	for i in $*; do
+		inode=$(basename $i | cut -d"_" -f2)
+		filename=$(basename $i | cut -d"_" -f1)
+		filename_path=$(readlink -f "$i")
+		restorefile_path="$HOME/recyclebin/$i"
+		restore_info=$(grep "$inode" $HOME/.restore.info)
+		restorepath=$(echo "$restore_info" | cut -d":" -f2)
+
+
+		if [ -f $restorefile_path ]; then
+			if [ $filename = $restorefile ]; then
+				echo "restore: attempting to delete restore - operation aborted"
+				exit 1
+			#check whether the file being restored already exists
+			elif [ -f $restorepath ]; then
+				read -p "Do you want to overwrite $filename? y/n: " input
+				case $input in
+					y*|Y*)
+						restore $i;;
+					*)
+						echo "restore: $i operation aborted"
+						exit 1 ;;
+				esac
+			else
+				restore $i
+			fi
+		#display an error message if file supplied does not exist
+		else
+			echo "restore: $i does not exist"
+			exit 1
+		fi
+	done
+	exit 0
+#display an error message if no file provided as argument
+else
+	echo "restore: no filename is provided"
+	exit 1
+fi
+

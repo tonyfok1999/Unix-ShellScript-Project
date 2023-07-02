@@ -1,0 +1,94 @@
+#!/bin/bash
+
+recyclefile=$(basename $0)
+recyclefile_path=$(readlink -f "$0" 2> /dev/null)
+
+verbose=false
+inquiry=false
+recursive=false
+
+function recycle() {
+	inode=$(stat -c '%i' $1 2> /dev/null)
+	filename=$(basename $1)
+	filename_path=$(readlink -f "$1")
+	
+	#check if the file exist
+	if [ -f $filename_path ]; then
+		if [ $filename = $recyclefile ]; then
+			echo "recycle: attempting to delete recycle - operation aborted"
+			exit 1
+		else
+			#moving the file to recyclebin
+			mv $filename_path $HOME/recyclebin/${filename}_${inode}
+			#add record to .restore.info
+			echo ${filename}_${inode}:${filename_path} >> .restore.info
+		fi
+	elif [ -d $filename_path ]; then
+		if [[ $recursive == true ]]; then
+			local folder=$filename_path
+			mapfile -t temp < <(find $filename_path -maxdepth 1 | sed '1d' 2> /dev/null)
+			#Inside the folder
+			for line in ${temp[@]}; do
+				recycle $line
+			done
+			rmdir $folder
+		else
+			echo "recycle: $1 is a directory which need '-r' option to recycle"
+			exit 1
+		fi
+		
+	else
+		echo "recycle: $1 does not exist"
+		exit 1
+	fi
+}
+
+#create recyclebin fold if it doesn't exit
+if [ ! -d "$HOME/recyclebin" ]; then
+	mkdir $HOME/recyclebin
+fi
+
+#create .restore.info if it doesn't exit
+if [ ! -f "$HOME/.restore.info" ]; then
+	touch $HOME/.restore.info
+fi
+
+#mv file that passed in as arg to recyclebin
+if [ $# -gt 0 ]; then
+	while getopts ivr opt; do
+		case $opt in
+			i)  inquiry=true;;
+			v) verbose=true ;;
+			r) recursive=true ;;
+			*) echo "recycle: invalid option -- '$opt'"
+			exit 1;;
+		esac
+	done
+	shift $(($OPTIND - 1))
+	
+	for i in $*; do
+		if [[ $inquiry == true && $verbose == false ]]; then
+			read -p "recycle: remove regular empty file '$i'? y/n: " input 
+				case $input in
+					y*|Y*) recycle $i ;;
+					*) echo "recycle: operation aborted" ;;
+				esac
+		elif [[ $inquiry == false && $verbose == true ]]; then
+			recycle $i
+			echo "recycle: removed '$i'"
+		elif [[ $inquiry == true && $verbose == true ]]; then
+			read -p "recycle: remove regular empty file '$i'? y/n: " input 
+				case $input in
+					y*|Y*) recycle $i 
+					echo "recycle: removed '$i'";;
+					*) echo "recycle: operation aborted" ;;
+				esac
+		else
+			recycle $i
+		fi
+	done
+	exit 0		
+else
+	echo "recycle: no filename is provided"
+	exit 1
+fi
