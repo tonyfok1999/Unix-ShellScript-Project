@@ -25,5 +25,9 @@ This command restores individual files from $HOME/recyclebin back to their origi
 
 ### Synopsis
 ```
-bash restore [FILE]...
+bash restore [OPTION] [FILE]...
+```
+
+```
+-r	Restore files that were recycled from a directory previously
 ```
